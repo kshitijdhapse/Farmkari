@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Prediction Web App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #777;    
+        }
+        form {
+            margin-top: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Crop Prediction Web App</h1>
+        <p>Enter the soil and weather parameters to predict the best crop to cultivate.</p>
+        <form id="prediction-form">
+            <label for="N">Nitrogen (N):</label>
+            <input type="number" id="N" name="N" required>
+            
+            <label for="P">Phosphorus (P):</label>
+            <input type="number" id="P" name="P" required>
+            
+            <label for="K">Potassium (K):</label>
+            <input type="number" id="K" name="K" required>
+            
+            <!-- <label for="temp">Temperature (°C):</label>
+            <input type="number" id="temp" name="temp" required> -->
+            
+            <!-- <label for="hum">Humidity (%):</label>
+            <input type="number" id="hum" name="hum" required> -->
+            
+            <label for="pH">Soil pH:</label>
+            <input type="number" id="pH" name="pH" required>
+            
+            <label for="rain">Rainfall (mm):</label>
+            <input type="number" id="rain" name="rain" required>
+            
+            <p>Latitude: <span id="latitude"></span></p>
+            <p>Longitude: <span id="longitude"></span></p>
+            <p>Temperature: <span id="temperature"></span></p>
+            <p>Humidity: <span id="humidity"></span></p>
+
+            <!-- <h2>Temperature : </h2><h2 id="temperature"></h2>
+            <h2>Humidity : </h2><h2 id="humidity"></h2> -->
+            
+            <button type="submit">Predict Crop</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let temperature = null; // Declare temperature and humidity variables
+        let humidity = null;
+    
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+    
+                // Display latitude and longitude
+                document.getElementById('latitude').textContent = latitude.toFixed(2);
+                document.getElementById('longitude').textContent = longitude.toFixed(2);
+    
+                // Fetch weather data from OpenWeatherMap API
+                const apiKey = 'f7ca5ff0339793c1abf10526d17423b7';
+                const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+    
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Display temperature
+                        temperature = data.main.temp; // Store temperature in the variable
+                        document.getElementById('temperature').textContent = temperature.toFixed(1);
+    
+                        // Display humidity
+                        humidity = data.main.humidity; // Store humidity in the variable
+                        document.getElementById('humidity').textContent = humidity.toFixed(1);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching weather data:', error);
+                    });
+            });
+        } else {
+            console.error('Geolocation is not available in this browser.');
+        }
+    
+        document.getElementById("prediction-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                N: parseFloat(formData.get("N")),
+                P: parseFloat(formData.get("P")),
+                K: parseFloat(formData.get("K")),
+                temp: parseFloat(temperature), // Include temperature from the variable
+                hum: parseFloat(humidity), // Include humidity from the variable
+                pH: parseFloat(formData.get("pH")),
+                rain: parseFloat(formData.get("rain")),
+            };
+    
+            fetch("https://farmapi-7syu.onrender.com/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                return response.json();
+            })
+            .then((result) => {
+                if (result && result.prediction !== undefined) {
+                    document.getElementById("result").innerHTML = `<p>Predicted Crop: <strong>${result.prediction}</strong></p>`;
+                } else {
+                    throw new Error("Invalid response from the server");
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                document.getElementById("result").innerHTML = `<p>Error occurred: ${error.message}</p>`;
+            });
+        });
+    </script>
+    
+</body>
+</html>
